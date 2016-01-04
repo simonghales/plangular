@@ -57,80 +57,6 @@ module.exports = audio;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],3:[function(require,module,exports){
-
-module.exports = function(n, options) {
-
-  var options = options || {};
-
-  var hours = Math.floor(n / 3600),
-    mins = '0' + Math.floor((n % 3600) / 60),
-    secs = '0' + Math.floor((n % 60));
-
-  mins = mins.substr(mins.length - 2);
-  secs = secs.substr(secs.length - 2);
-
-  if(!isNaN(secs)){
-    if (hours){
-      return hours+':'+mins+':'+secs;  
-    } else {
-      return mins+':'+secs;  
-    };
-  } else {
-    return '00:00';
-  };
-
-};
-
-
-},{}],4:[function(require,module,exports){
-
-var qs = require('query-string');
-var corslite = require('corslite');
-var jsonp = require('browser-jsonp');
-
-
-var endpoint = 'https://api.soundcloud.com/resolve.json';
-
-module.exports = function(params) {
-
-  var params = params || {};
-  var options;
-  var callback;
-
-  if (typeof arguments[1] === 'object') {
-    options = arguments[1];
-    callback = arguments[2];
-  } else {
-    options = {};
-    callback = arguments[1];
-  }
-
-  var url = endpoint + '?' + qs.stringify(params);
-
-  corslite(url, function(err, res) {
-    try {
-      if (err) throw err;
-      if (!err) {
-        res = JSON.parse(res.response) || res;
-        callback(err, res);
-      }
-    } catch(e) {
-      jsonp({
-        url: url,
-        error: function(err) {
-          callback(err);
-        },
-        success: function(res) {
-          callback(null, res);
-        }
-      });
-    }
-  }, true);
-
-};
-
-
-},{"browser-jsonp":5,"corslite":6,"query-string":7}],5:[function(require,module,exports){
 (function() {
   var JSONP, computedUrl, createElement, encode, noop, objectToURI, random, randomString;
 
@@ -143,7 +69,7 @@ module.exports = function(params) {
   random = Math.random;
 
   JSONP = function(options) {
-    var callback, done, head, params, script;
+    var callback, callbackFunc, callbackName, done, head, params, script;
     options = options ? options : {};
     params = {
       data: options.data || {},
@@ -159,16 +85,13 @@ module.exports = function(params) {
     }
     done = false;
     if (params.beforeSend({}, params) !== false) {
-      callback = params.data[options.callbackName || 'callback'] = 'jsonp_' + randomString(15);
+      callbackName = options.callbackName || 'callback';
+      callbackFunc = options.callbackFunc || 'jsonp_' + randomString(15);
+      callback = params.data[callbackName] = callbackFunc;
       window[callback] = function(data) {
+        window[callback] = null;
         params.success(data, params);
-        params.complete(data, params);
-        try {
-          return delete window[callback];
-        } catch (_error) {
-          window[callback] = void 0;
-          return void 0;
-        }
+        return params.complete(data, params);
       };
       script = createElement('script');
       script.src = computedUrl(params);
@@ -194,8 +117,23 @@ module.exports = function(params) {
         }
       };
       head = head || window.document.getElementsByTagName('head')[0] || window.document.documentElement;
-      return head.insertBefore(script, head.firstChild);
+      head.insertBefore(script, head.firstChild);
     }
+    return {
+      abort: function() {
+        window[callback] = function() {
+          return window[callback] = null;
+        };
+        done = true;
+        if (script && script.parentNode) {
+          script.onload = script.onreadystatechange = null;
+          if (script && script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+          return script = null;
+        }
+      }
+    };
   };
 
   noop = function() {
@@ -241,7 +179,7 @@ module.exports = function(params) {
 
 }).call(this);
 
-},{}],6:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 function corslite(url, callback, cors) {
     var sent = false;
 
@@ -336,7 +274,33 @@ function corslite(url, callback, cors) {
 
 if (typeof module !== 'undefined') module.exports = corslite;
 
-},{}],7:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
+
+module.exports = function(n, options) {
+
+  var options = options || {};
+
+  var hours = Math.floor(n / 3600),
+    mins = '0' + Math.floor((n % 3600) / 60),
+    secs = '0' + Math.floor((n % 60));
+
+  mins = mins.substr(mins.length - 2);
+  secs = secs.substr(secs.length - 2);
+
+  if(!isNaN(secs)){
+    if (hours){
+      return hours+':'+mins+':'+secs;  
+    } else {
+      return mins+':'+secs;  
+    };
+  } else {
+    return '00:00';
+  };
+
+};
+
+
+},{}],6:[function(require,module,exports){
 /*!
 	query-string
 	Parse and stringify URL query strings
@@ -400,14 +364,63 @@ if (typeof module !== 'undefined') module.exports = corslite;
 	} else if (typeof module !== 'undefined' && module.exports) {
 		module.exports = queryString;
 	} else {
-		window.queryString = queryString;
+		self.queryString = queryString;
 	}
 })();
 
-},{}],8:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
+
+var qs = require('query-string');
+var corslite = require('corslite');
+var jsonp = require('browser-jsonp');
+
+
+var endpoint = 'https://api.soundcloud.com/resolve.json';
+
+module.exports = function(params) {
+
+  var params = params || {};
+  var options;
+  var callback;
+
+  if (typeof arguments[1] === 'object') {
+    options = arguments[1];
+    callback = arguments[2];
+  } else {
+    options = {};
+    callback = arguments[1];
+  }
+
+  var url = endpoint + '?' + qs.stringify(params);
+
+  corslite(url, function(err, res) {
+    try {
+      if (err) throw err;
+      if (!err) {
+        res = JSON.parse(res.response) || res;
+        callback(err, res);
+      }
+    } catch(e) {
+      jsonp({
+        url: url,
+        error: function(err) {
+          callback(err);
+        },
+        success: function(res) {
+          callback(null, res);
+        }
+      });
+    }
+  }, true);
+
+};
+
+
+},{"browser-jsonp":3,"corslite":4,"query-string":6}],8:[function(require,module,exports){
 
 // Plangular
 // AngularJS Version
+//boop
 
 'use strict';
 
@@ -416,7 +429,7 @@ var resolve = require('soundcloud-resolve-jsonp');
 var Player = require('audio-player');
 var hhmmss = require('hhmmss');
 
-plangular.directive('plangular', ['$timeout', 'plangularConfig', function($timeout, plangularConfig) {
+plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', function($timeout, $rootScope, plangularConfig) {
 
   var client_id = plangularConfig.clientId;
   var player = new Player();
@@ -462,9 +475,12 @@ plangular.directive('plangular', ['$timeout', 'plangularConfig', function($timeo
         return track;
       }
 
-      if (src) {
+      function setSrc() {
         resolve({ url: src, client_id: client_id }, function(err, res) {
-          if (err) { console.error(err); }
+          if (err) {
+            console.error(err);
+            $rootScope.$broadcast("plangular.track.error", src);
+          }
           scope.$apply(function() {
             scope.track = createSrc(res);
             if (Array.isArray(res)) {
@@ -479,6 +495,18 @@ plangular.directive('plangular', ['$timeout', 'plangularConfig', function($timeo
             }
           });
         });
+      }
+
+      scope.$watch(function() {
+        return attr.plangular;
+      }, function() {
+        console.log("attr for plangular has been updated", attr.plangular);
+        src = attr.plangular;
+        setSrc();
+      });
+
+      if (src) {
+        //setSrc();
       }
 
       scope.play = function(i) {
@@ -562,5 +590,5 @@ plangular.provider('plangularConfig', function() {
 
 module.exports = 'plangular';
 
-},{"audio-player":1,"hhmmss":3,"soundcloud-resolve-jsonp":4}]},{},[8])(8)
+},{"audio-player":1,"hhmmss":5,"soundcloud-resolve-jsonp":7}]},{},[8])(8)
 });

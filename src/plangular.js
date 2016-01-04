@@ -1,6 +1,7 @@
 
 // Plangular
 // AngularJS Version
+//boop
 
 'use strict';
 
@@ -9,7 +10,7 @@ var resolve = require('soundcloud-resolve-jsonp');
 var Player = require('audio-player');
 var hhmmss = require('hhmmss');
 
-plangular.directive('plangular', ['$timeout', 'plangularConfig', function($timeout, plangularConfig) {
+plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', function($timeout, $rootScope, plangularConfig) {
 
   var client_id = plangularConfig.clientId;
   var player = new Player();
@@ -55,9 +56,12 @@ plangular.directive('plangular', ['$timeout', 'plangularConfig', function($timeo
         return track;
       }
 
-      if (src) {
+      function setSrc() {
         resolve({ url: src, client_id: client_id }, function(err, res) {
-          if (err) { console.error(err); }
+          if (err) {
+            console.error(err);
+            $rootScope.$broadcast("plangular.track.error", src);
+          }
           scope.$apply(function() {
             scope.track = createSrc(res);
             if (Array.isArray(res)) {
@@ -72,6 +76,18 @@ plangular.directive('plangular', ['$timeout', 'plangularConfig', function($timeo
             }
           });
         });
+      }
+
+      scope.$watch(function() {
+        return attr.plangular;
+      }, function() {
+        console.log("attr for plangular has been updated", attr.plangular);
+        src = attr.plangular;
+        setSrc();
+      });
+
+      if (src) {
+        //setSrc();
       }
 
       scope.play = function(i) {
