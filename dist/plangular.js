@@ -501,6 +501,7 @@ plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', f
         return attr.plangular;
       }, function() {
         console.log("attr for plangular has been updated", attr.plangular);
+        if(!attr.plangular) return;
         src = attr.plangular;
         setSrc();
       });
