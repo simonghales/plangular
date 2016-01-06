@@ -64,6 +64,7 @@ plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', f
           }
           scope.$apply(function() {
             scope.track = createSrc(res);
+            $rootScope.$broadcast("plangular.track.loaded", src);
             if (Array.isArray(res)) {
               scope.tracks = res.map(function(track) {
                 return createSrc(track);
@@ -102,6 +103,14 @@ plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', f
       scope.pause = function() {
         player.pause();
       };
+
+      //scope.playNew = function(src) {
+      //  if (typeof i !== 'undefined' && scope.tracks.length) {
+      //    scope.index = i;
+      //    scope.track = scope.tracks[i];
+      //  }
+      //  player.playPause(scope.track.src);
+      //};
 
       scope.playPause = function(i) {
         if (typeof i !== 'undefined' && scope.tracks.length) {
@@ -147,6 +156,7 @@ plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', f
       player.audio.addEventListener('ended', function() {
         if (scope.track.src === player.audio.src) {
           scope.next();
+          $rootScope.$broadcast("plangular.track.ended");
         }
       });
 
