@@ -27,10 +27,13 @@ plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', f
       scope.audio = player.audio;
       scope.currentTime = 0;
       scope.duration = 0;
-      scope.track = false;
+      scope.track = {};
       scope.index = 0;
       scope.playlist;
       scope.tracks = [];
+      scope.states = {
+        paused: false
+      };
 
       if (!client_id) {
         var message = [
@@ -56,13 +59,23 @@ plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', f
         return track;
       }
 
+      // Not used currently
       function setSrc() {
         resolve({ url: src, client_id: client_id }, function(err, res) {
-          if (err) {
-            console.error(err);
-            $rootScope.$broadcast("plangular.track.error", src);
+          if (err || typeof res === 'undefined') {
+            scope.$apply(function() {
+              console.error(err);
+              $rootScope.$broadcast("plangular.track.error", src);
+              return;
+            });
           }
           scope.$apply(function() {
+            if(typeof res === 'undefined') {
+              console.error("undefined dawg");
+              $rootScope.$broadcast("plangular.track.error", src);
+              return;
+            }
+            console.log("track src result", res);
             scope.track = createSrc(res);
             $rootScope.$broadcast("plangular.track.loaded", src);
             if (Array.isArray(res)) {
@@ -79,20 +92,44 @@ plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', f
         });
       }
 
-      scope.$watch(function() {
-        return attr.plangular;
-      }, function() {
-        console.log("attr for plangular has been updated", attr.plangular);
-        if(!attr.plangular) return;
-        src = attr.plangular;
-        setSrc();
-      });
+      function getSrc(trackId) {
+        return "https://api.soundcloud.com/tracks/" + trackId + "/stream?client_id=" + client_id;
+      }
 
-      if (src) {
-        //setSrc();
+      function setSrcPlay(trackId, dontPlay) {
+        //scope.$apply(function() {
+          scope.track.src = getSrc(trackId);
+          scope.track.srcId = trackId;
+        if(!dontPlay && !scope.states.paused) {
+          scope.play();
+        }
+          //if(attr.playing == 'true' && attr.trackId == scope.track.trackId) {
+          //  scope.play();
+          //} else {
+          //  console.log("shouldn't start playing");
+          //}
+        //});
+      }
+
+      function _watchAttr() {
+
+        scope.$watch(function() {
+          return attr.plangular;
+        }, function() {
+          console.log("attr for plangular has been updated", attr.plangular);
+          if(!attr.plangular) return;
+          src = attr.plangular;
+          setSrc();
+        });
+
+        if (src) {
+          //setSrc();
+        }
+
       }
 
       scope.play = function(i) {
+        scope.states.paused = false;
         if (typeof i !== 'undefined' && scope.tracks.length) {
           scope.index = i;
           scope.track = scope.tracks[i];
@@ -101,6 +138,7 @@ plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', f
       };
 
       scope.pause = function() {
+        scope.states.paused = true;
         player.pause();
       };
 
@@ -137,6 +175,11 @@ plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', f
           scope.pause();
         }
       };
+
+      scope.setSrcPlay = function(trackId, dontPlay) {
+        scope.states.paused = false;
+        setSrcPlay(trackId, dontPlay);
+      }
 
       scope.seek = function(e) {
         if (scope.track.src === player.audio.src) {
