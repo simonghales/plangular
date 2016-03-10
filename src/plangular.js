@@ -203,6 +203,13 @@ plangular.directive('plangular', ['$timeout', '$rootScope', 'plangularConfig', f
         }
       });
 
+      player.audio.addEventListener('error', function() {
+        if (scope.track.src === player.audio.src) {
+          scope.next();
+          $rootScope.$broadcast("plangular.track.error");
+        }
+      });
+
     }
 
   }
